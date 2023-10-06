@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Streaming</title>
+</head>
+<body>
+    <button id="startButton">Start Streaming</button>
+    <button id="stopButton" disabled>Stop Streaming</button>
+    
+    <script>
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        
+        let mediaRecorder;
+        let websocket;
+
+        startButton.addEventListener('click', async () => {
+            startButton.disabled = true;
+            stopButton.disabled = false;
+            // Request access to the microphone
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                websocket = new WebSocket('ws://localhost:8001/audio');
+                websocket.onopen = ()=>{
+                  console.log("ws open")
+                }
+                websocket.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
+                websocket.onclose = () => {
+                    console.log("ws close")
+                };
+                mediaRecorder.ondataavailable = (event) => {
+                    
+                    console.log("ondataavailable")
+                    console.log(websocket.readyState)
+                    console.log(event.data.size)
+
+                    if (event.data.size > 0 && websocket.readyState === WebSocket.OPEN) {
+                      console.log(event.data)  
+                      websocket.send(event.data);
+                    }
+                };
+
+                mediaRecorder.start();
+
+                stopButton.addEventListener('click', (e) => {
+                  // e.preventDefault()  
+                  mediaRecorder.stop();
+                    // websocket.close();
+                    startButton.disabled = false;
+                    stopButton.disabled = true;
+                });
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+            }
+        });
+    </script>
+</body>
+</html>
